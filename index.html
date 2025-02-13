@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YOLO Annotation Tool</title>
+    <title>Houbara Behavior Annotation Tool</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -30,6 +30,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
         }
         img {
             max-width: 100%;
@@ -40,6 +41,10 @@
             justify-content: center;
             gap: 15px;
             margin-top: 20px;
+        }
+        .bbox {
+            position: absolute;
+            border: 2px solid red;
         }
     </style>
 </head>
@@ -59,7 +64,7 @@
                 <h3>Original Image</h3>
                 <img id="original-image" src="" alt="Loading image...">
             </div>
-            <div class="image-box">
+            <div class="image-box" id="annotated-container">
                 <h3>Annotated Image</h3>
                 <img id="annotated-image" src="" alt="Loading image...">
             </div>
@@ -84,35 +89,32 @@
 
     <script>
         const PASSWORD = "Lyessaadsaoud@hubot2025";  
-        const REPO_URL = "https://raw.githubusercontent.com/LyesSaadSaoud/HuBehavior/main/";  
+        const GITHUB_REPO = "https://raw.githubusercontent.com/LyesSaadSaoud/HuBehavior/main/";
 
-        let images = [];
-        let annotations = {};
+        let images = [
+            "image_04529_jpg.rf.4244a2cd4beca0a3f3c0e0f109c1f4e4.jpg",
+            "image_04540_jpg.rf.e5f32a6bbd7971bc3264edcb0c6ae2c2.jpg",
+            "image_04548_jpg.rf.d9e32b60127152d9bed8a6795ac409d5.jpg"
+        ];
         let currentIndex = 0;
-
-        async function fetchImageList() {
-            try {
-                const response = await fetch(`${REPO_URL}images/`);
-                const text = await response.text();
-                const matches = [...text.matchAll(/href="([^"]+\.(jpg|png|jpeg))"/gi)];
-                images = matches.map(m => m[1]);
-                if (images.length > 0) loadImage();
-            } catch (error) {
-                console.error("Error fetching images:", error);
-            }
-        }
+        let annotations = {};
 
         async function fetchAnnotation(imageName) {
+            let labelFile = imageName.replace(/\.(jpg|png|jpeg)$/, ".txt");
+            let labelUrl = `${GITHUB_REPO}labels/${labelFile}`;
+
             try {
-                const labelFile = imageName.replace(/\.(jpg|png|jpeg)$/, ".txt");
-                const response = await fetch(`${REPO_URL}labels/${labelFile}`);
+                const response = await fetch(labelUrl);
+                if (!response.ok) throw new Error("Label not found");
                 const text = await response.text();
-                const lines = text.trim().split("\n");
-                let bboxData = lines.map(line => {
-                    let [classId, x, y, w, h] = line.split(" ");
+
+                let lines = text.trim().split("\n");
+                annotations[imageName] = lines.map(line => {
+                    let [classId, x, y, w, h] = line.split(" ").map(parseFloat);
                     return { classId, x, y, w, h };
                 });
-                annotations[imageName] = bboxData;
+
+                drawBoundingBoxes(imageName);
             } catch (error) {
                 console.error("No annotation found for", imageName);
                 annotations[imageName] = [];
@@ -124,28 +126,39 @@
             if (input === PASSWORD) {
                 document.getElementById("password-container").style.display = "none";
                 document.getElementById("annotation-container").style.display = "block";
-                fetchImageList();
+                loadImage();
             } else {
                 alert("Wrong password! Try again.");
             }
         }
 
-        async function loadImage() {
+        function loadImage() {
             if (currentIndex >= images.length) {
                 alert("No more images!");
                 return;
             }
 
             let imgName = images[currentIndex];
-            document.getElementById("original-image").src = `${REPO_URL}images/${imgName}`;
-            document.getElementById("annotated-image").src = `${REPO_URL}images/${imgName}`;
+            document.getElementById("original-image").src = `${GITHUB_REPO}images/${imgName}`;
+            document.getElementById("annotated-image").src = `${GITHUB_REPO}images/${imgName}`;
 
-            await fetchAnnotation(imgName);
+            fetchAnnotation(imgName);
+        }
 
-            let bboxClass = annotations[imgName]?.[0]?.classId || "0";  
-            let checkboxes = document.getElementsByName("class");
-            checkboxes.forEach((checkbox) => {
-                checkbox.checked = checkbox.value === bboxClass;
+        function drawBoundingBoxes(imageName) {
+            const annotatedContainer = document.getElementById("annotated-container");
+            document.querySelectorAll(".bbox").forEach(bbox => bbox.remove());
+
+            annotations[imageName].forEach(bbox => {
+                let bboxDiv = document.createElement("div");
+                bboxDiv.className = "bbox";
+                bboxDiv.style.left = `${bbox.x * 500}px`;
+                bboxDiv.style.top = `${bbox.y * 500}px`;
+                bboxDiv.style.width = `${bbox.w * 500}px`;
+                bboxDiv.style.height = `${bbox.h * 500}px`;
+                bboxDiv.style.borderColor = "red";
+
+                annotatedContainer.appendChild(bboxDiv);
             });
         }
 
@@ -157,8 +170,8 @@
             }
 
             let imgName = images[currentIndex];
-            if (annotations[imgName][0]?.classId !== selectedClass) {
-                annotations[imgName][0].classId = selectedClass;
+            if (annotations[imgName][0]?.classId !== parseInt(selectedClass)) {
+                annotations[imgName][0].classId = parseInt(selectedClass);
                 alert(`Class updated to ${selectedClass}`);
             } else {
                 alert("Annotation is correct!");
