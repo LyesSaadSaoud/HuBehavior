@@ -24,19 +24,16 @@
             position: relative;
         }
         .image-box {
+            position: relative;
             border: 2px solid #ddd;
             padding: 10px;
             width: 500px;
-            height: 500px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
+            height: auto;
         }
         img {
             max-width: 100%;
             max-height: 100%;
-            position: absolute;
+            position: relative;
         }
         .checkbox-container {
             display: flex;
@@ -70,6 +67,7 @@
             <div class="image-box" id="annotated-container">
                 <h3>Annotated Image</h3>
                 <img id="annotated-image" src="" alt="Loading image..." onload="drawBoundingBoxes()">
+                <canvas id="canvas"></canvas>
             </div>
         </div>
 
@@ -149,29 +147,24 @@
         }
 
         function drawBoundingBoxes() {
-            const annotatedContainer = document.getElementById("annotated-container");
-            document.querySelectorAll(".bbox").forEach(bbox => bbox.remove());
+            const annotatedImg = document.getElementById("annotated-image");
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
 
-            let imgElement = document.getElementById("annotated-image");
-            let imgWidth = imgElement.width;
-            let imgHeight = imgElement.height;
+            canvas.width = annotatedImg.width;
+            canvas.height = annotatedImg.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             let imageName = images[currentIndex];
-
             annotations[imageName].forEach(bbox => {
-                let bboxDiv = document.createElement("div");
-                bboxDiv.className = "bbox";
-                
-                let x_min = (bbox.x_center - bbox.width / 2) * imgWidth;
-                let y_min = (bbox.y_center - bbox.height / 2) * imgHeight;
-                let w = bbox.width * imgWidth;
-                let h = bbox.height * imgHeight;
+                let x_min = (bbox.x_center - bbox.width / 2) * canvas.width;
+                let y_min = (bbox.y_center - bbox.height / 2) * canvas.height;
+                let w = bbox.width * canvas.width;
+                let h = bbox.height * canvas.height;
 
-                bboxDiv.style.left = `${x_min}px`;
-                bboxDiv.style.top = `${y_min}px`;
-                bboxDiv.style.width = `${w}px`;
-                bboxDiv.style.height = `${h}px`;
-
-                annotatedContainer.appendChild(bboxDiv);
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x_min, y_min, w, h);
             });
         }
 
