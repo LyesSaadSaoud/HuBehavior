@@ -21,6 +21,7 @@
             justify-content: center;
             gap: 20px;
             margin-top: 20px;
+            position: relative;
         }
         .image-box {
             position: relative;
@@ -92,15 +93,7 @@
 
     <script>
         const PASSWORD = "Lyessaadsaoud@hubot2025";  // Password Protection
-        const repo = "LyesSaadSaoud/HuBehavior";  // Your GitHub repository
-        const basePath = `https://raw.githubusercontent.com/${repo}/main`; // GitHub Raw URL
-        const imagesPath = basePath + "/images/";
-        const labelsPath = basePath + "/labels/";
-        let images = [
-            "image_04529_jpg.rf.4244a2cd4beca0a3f3c0e0f109c1f4e4.jpg",
-            "image_04540_jpg.rf.e5f32a6bbd7971bc3264edcb0c6ae2c2.jpg",
-            "image_04548_jpg.rf.d9e32b60127152d9bed8a6795ac409d5.jpg"
-        ];  
+        let images = [];  // List of image filenames
         let currentIndex = 0;
 
         function checkPassword() {
@@ -108,10 +101,31 @@
             if (input === PASSWORD) {
                 document.getElementById("password-container").style.display = "none";
                 document.getElementById("annotation-container").style.display = "block";
-                loadImage();
+                loadImagesFromFolder();
             } else {
                 alert("Wrong password! Try again.");
             }
+        }
+
+        function loadImagesFromFolder() {
+            fetch("images/") // Fetch the image directory
+                .then(response => response.text())
+                .then(html => {
+                    let parser = new DOMParser();
+                    let doc = parser.parseFromString(html, "text/html");
+                    let links = doc.querySelectorAll("a");
+
+                    images = Array.from(links)
+                        .map(link => link.href.split("/").pop())
+                        .filter(name => name.match(/\.(jpg|jpeg|png)$/i));
+
+                    if (images.length > 0) {
+                        loadImage();
+                    } else {
+                        alert("No images found in the folder.");
+                    }
+                })
+                .catch(error => console.error("Error loading images:", error));
         }
 
         function loadImage() {
@@ -121,14 +135,14 @@
             }
 
             let imgName = images[currentIndex];
-            document.getElementById("original-image").src = imagesPath + imgName;
-            document.getElementById("annotated-image").src = imagesPath + imgName;
+            document.getElementById("original-image").src = `images/${imgName}`;
+            document.getElementById("annotated-image").src = `images/${imgName}`;
 
             fetchBBoxes(imgName);
         }
 
         function fetchBBoxes(imageName) {
-            let labelFile = labelsPath + imageName.replace(".jpg", ".txt").replace(".png", ".txt");
+            let labelFile = `labels/${imageName.replace(/\.(jpg|jpeg|png)$/i, ".txt")}`;
 
             fetch(labelFile)
                 .then(response => {
