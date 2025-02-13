@@ -52,7 +52,7 @@
     </div>
 
     <div id="annotation-container">
-        <h1>YOLO Annotation Tool</h1>
+        <h1>Houbara Behavior Annotation Tool</h1>
         
         <div class="image-container">
             <div class="image-box">
@@ -83,8 +83,8 @@
     </div>
 
     <script>
-        const PASSWORD = "Lyessaadsaoud@hubot2025";  // Password Protection
-        const REPO_URL = "https://raw.githubusercontent.com/LyesSaadSaoud/HuBehavior/main/"; // Update with your GitHub repo URL
+        const PASSWORD = "Lyessaadsaoud@hubot2025";  
+        const REPO_URL = "https://raw.githubusercontent.com/LyesSaadSaoud/HuBehavior/main/";  
 
         let images = [];
         let annotations = {};
@@ -142,7 +142,7 @@
 
             await fetchAnnotation(imgName);
 
-            let bboxClass = annotations[imgName]?.[0]?.classId || "0";  // Default to class 0 if missing
+            let bboxClass = annotations[imgName]?.[0]?.classId || "0";  
             let checkboxes = document.getElementsByName("class");
             checkboxes.forEach((checkbox) => {
                 checkbox.checked = checkbox.value === bboxClass;
