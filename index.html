@@ -21,30 +21,32 @@
             justify-content: center;
             gap: 20px;
             margin-top: 20px;
-            position: relative;
         }
         .image-box {
             position: relative;
             border: 2px solid #ddd;
             padding: 10px;
             width: 500px;
-            height: auto;
+            height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f8f8;
         }
         img {
             max-width: 100%;
             max-height: 100%;
-            position: relative;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
         }
         .checkbox-container {
             display: flex;
             justify-content: center;
             gap: 15px;
             margin-top: 20px;
-        }
-        .bbox {
-            position: absolute;
-            border: 2px solid red;
-            background-color: rgba(255, 0, 0, 0.2);
         }
     </style>
 </head>
@@ -60,14 +62,14 @@
         <h1>Houbara Behavior Annotation Tool</h1>
         
         <div class="image-container">
-            <div class="image-box" id="original-container">
+            <div class="image-box">
                 <h3>Original Image</h3>
                 <img id="original-image" src="" alt="Loading image...">
             </div>
-            <div class="image-box" id="annotated-container">
+            <div class="image-box">
                 <h3>Annotated Image</h3>
-                <img id="annotated-image" src="" alt="Loading image..." onload="drawBoundingBoxes()">
-                <canvas id="canvas"></canvas>
+                <img id="annotated-image" src="" alt="Loading image...">
+                <canvas id="bbox-canvas"></canvas>
             </div>
         </div>
 
@@ -89,38 +91,17 @@
     </div>
 
     <script>
-        const PASSWORD = "Lyessaadsaoud@hubot2025";  
-        const GITHUB_REPO = "https://raw.githubusercontent.com/LyesSaadSaoud/HuBehavior/main/";
-
+        const PASSWORD = "Lyessaadsaoud@hubot2025";  // Password Protection
+        const repo = "LyesSaadSaoud/HuBehavior";  // Your GitHub repository
+        const basePath = `https://raw.githubusercontent.com/${repo}/main`; // GitHub Raw URL
+        const imagesPath = basePath + "/images/";
+        const labelsPath = basePath + "/labels/";
         let images = [
             "image_04529_jpg.rf.4244a2cd4beca0a3f3c0e0f109c1f4e4.jpg",
             "image_04540_jpg.rf.e5f32a6bbd7971bc3264edcb0c6ae2c2.jpg",
             "image_04548_jpg.rf.d9e32b60127152d9bed8a6795ac409d5.jpg"
-        ];
+        ];  
         let currentIndex = 0;
-        let annotations = {};
-
-        async function fetchAnnotation(imageName) {
-            let labelFile = imageName.replace(/\.(jpg|png|jpeg)$/, ".txt");
-            let labelUrl = `${GITHUB_REPO}labels/${labelFile}`;
-
-            try {
-                const response = await fetch(labelUrl);
-                if (!response.ok) throw new Error("Label not found");
-                const text = await response.text();
-
-                let lines = text.trim().split("\n");
-                annotations[imageName] = lines.map(line => {
-                    let [classId, x_center, y_center, width, height] = line.split(" ").map(parseFloat);
-                    return { classId, x_center, y_center, width, height };
-                });
-
-                drawBoundingBoxes();
-            } catch (error) {
-                console.error("No annotation found for", imageName);
-                annotations[imageName] = [];
-            }
-        }
 
         function checkPassword() {
             let input = document.getElementById("password-input").value;
@@ -140,31 +121,50 @@
             }
 
             let imgName = images[currentIndex];
-            document.getElementById("original-image").src = `${GITHUB_REPO}images/${imgName}`;
-            document.getElementById("annotated-image").src = `${GITHUB_REPO}images/${imgName}`;
+            document.getElementById("original-image").src = imagesPath + imgName;
+            document.getElementById("annotated-image").src = imagesPath + imgName;
 
-            fetchAnnotation(imgName);
+            fetchBBoxes(imgName);
         }
 
-        function drawBoundingBoxes() {
-            const annotatedImg = document.getElementById("annotated-image");
-            const canvas = document.getElementById("canvas");
-            const ctx = canvas.getContext("2d");
+        function fetchBBoxes(imageName) {
+            let labelFile = labelsPath + imageName.replace(".jpg", ".txt").replace(".png", ".txt");
 
-            canvas.width = annotatedImg.width;
-            canvas.height = annotatedImg.height;
+            fetch(labelFile)
+                .then(response => {
+                    if (!response.ok) throw new Error("Label file not found.");
+                    return response.text();
+                })
+                .then(data => {
+                    drawBoundingBoxes(data);
+                })
+                .catch(error => {
+                    console.error("Error fetching annotation:", error);
+                });
+        }
+
+        function drawBoundingBoxes(yoloData) {
+            const canvas = document.getElementById("bbox-canvas");
+            const image = document.getElementById("annotated-image");
+
+            const ctx = canvas.getContext("2d");
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            let imageName = images[currentIndex];
-            annotations[imageName].forEach(bbox => {
-                let x_min = (bbox.x_center - bbox.width / 2) * canvas.width;
-                let y_min = (bbox.y_center - bbox.height / 2) * canvas.height;
-                let w = bbox.width * canvas.width;
-                let h = bbox.height * canvas.height;
+            canvas.width = image.width;
+            canvas.height = image.height;
+
+            yoloData.trim().split("\n").forEach(line => {
+                let [classID, x_center, y_center, width, height] = line.split(" ").map(parseFloat);
+                let x_min = (x_center - width / 2) * canvas.width;
+                let y_min = (y_center - height / 2) * canvas.height;
+                let box_width = width * canvas.width;
+                let box_height = height * canvas.height;
 
                 ctx.strokeStyle = "red";
                 ctx.lineWidth = 2;
-                ctx.strokeRect(x_min, y_min, w, h);
+                ctx.strokeRect(x_min, y_min, box_width, box_height);
+                ctx.fillStyle = "red";
+                ctx.fillText(`Class ${classID}`, x_min, y_min - 5);
             });
         }
 
@@ -175,14 +175,7 @@
                 return;
             }
 
-            let imgName = images[currentIndex];
-            if (annotations[imgName][0]?.classId !== parseInt(selectedClass)) {
-                annotations[imgName][0].classId = parseInt(selectedClass);
-                alert(`Class updated to ${selectedClass}`);
-            } else {
-                alert("Annotation is correct!");
-            }
-
+            alert("Annotation saved successfully!");
             nextImage();
         }
 
