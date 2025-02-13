@@ -21,6 +21,7 @@
             justify-content: center;
             gap: 20px;
             margin-top: 20px;
+            position: relative;
         }
         .image-box {
             border: 2px solid #ddd;
@@ -68,7 +69,7 @@
             </div>
             <div class="image-box" id="annotated-container">
                 <h3>Annotated Image</h3>
-                <img id="annotated-image" src="" alt="Loading image...">
+                <img id="annotated-image" src="" alt="Loading image..." onload="drawBoundingBoxes()">
             </div>
         </div>
 
@@ -116,7 +117,7 @@
                     return { classId, x_center, y_center, width, height };
                 });
 
-                drawBoundingBoxes(imageName);
+                drawBoundingBoxes();
             } catch (error) {
                 console.error("No annotation found for", imageName);
                 annotations[imageName] = [];
@@ -147,13 +148,14 @@
             fetchAnnotation(imgName);
         }
 
-        function drawBoundingBoxes(imageName) {
+        function drawBoundingBoxes() {
             const annotatedContainer = document.getElementById("annotated-container");
             document.querySelectorAll(".bbox").forEach(bbox => bbox.remove());
 
             let imgElement = document.getElementById("annotated-image");
             let imgWidth = imgElement.width;
             let imgHeight = imgElement.height;
+            let imageName = images[currentIndex];
 
             annotations[imageName].forEach(bbox => {
                 let bboxDiv = document.createElement("div");
